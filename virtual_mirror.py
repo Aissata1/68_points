@@ -11,12 +11,12 @@ accessory = cv2.imread("C:/Users/Aissa/OneDrive/Documents/GitHub/68_points/sungl
 
 # Ensure accessory is loaded correctly
 if accessory is None:
-    print("❌ Error: Could not load sunglasses image. Check the file path!")
+    print("Error: Could not load sunglasses image. Check the file path!")
     exit()
 
 # Check if the image has an alpha channel, convert if necessary
 if accessory.shape[2] == 3:  
-    print("⚠️ No alpha channel detected! Converting to RGBA...")
+    print("No alpha channel detected! Converting to RGBA...")
     accessory = cv2.cvtColor(accessory, cv2.COLOR_BGR2BGRA)
 
 # Function to overlay accessory
@@ -28,7 +28,7 @@ def overlay_accessory(image, accessory, position):
         alpha_s = accessory[:, :, 3] / 255.0
         alpha_l = 1.0 - alpha_s
     else:
-        print("⚠️ Warning: No alpha channel detected! Using basic overlay.")
+        print("Warning: No alpha channel detected! Using basic overlay.")
         alpha_s = 1
         alpha_l = 0
 
@@ -51,18 +51,19 @@ while cap.isOpened():
     for face in faces:
         landmarks = predictor(gray, face)
 
-        # Get landmark points for positioning the sunglasses
-        left_eye_x = landmarks.part(36).x  # Outer left eye corner
-        right_eye_x = landmarks.part(45).x  # Outer right eye corner
-        eye_center_y = (landmarks.part(36).y + landmarks.part(45).y) // 2  # Midpoint between eyes
+        # Get key eye landmarks for better fit
+        left_eye_outer = landmarks.part(36).x, landmarks.part(36).y
+        right_eye_outer = landmarks.part(45).x, landmarks.part(45).y
+        eye_center = ((left_eye_outer[0] + right_eye_outer[0]) // 2, 
+                      (left_eye_outer[1] + right_eye_outer[1]) // 2)
 
-        # Compute sunglasses width based on eye width
-        width = int((right_eye_x - left_eye_x) * 1.8)  # Adjust width scale
-        height = int(width * 0.5)  # Maintain aspect ratio
+        # Calculate width based on eyes distance (better for open-frame sunglasses)
+        width = int((right_eye_outer[0] - left_eye_outer[0]) * 2.0)  # Scale up for open frames
+        height = int(width * 0.4)  # Maintain aspect ratio
 
-        # Adjust position to sit properly on eyes
-        x1 = left_eye_x - int(width * 0.15)  # Shift left slightly
-        y1 = eye_center_y - int(height * 0.6)  # Move up to align with eyebrows
+        # Adjust position to ensure correct overlay on eyes
+        x1 = eye_center[0] - width // 2
+        y1 = eye_center[1] - int(height * 0.5)  # Adjust to sit above eyes
 
         position = (x1, y1, width, height)
 
